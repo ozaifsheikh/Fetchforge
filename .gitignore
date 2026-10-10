@@ -1,0 +1,17 @@
+# Compiled executable
+fetchforge
+downloader
+
+# Downloaded test files
+downloads/*
+
+# Keep the downloads directory in Git
+!downloads/.gitkeep
+
+# Temporary files
+*.tmp
+*.part
+
+# Editor and system files
+*~
+.DS_Store
