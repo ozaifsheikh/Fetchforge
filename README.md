@@ -1,26 +1,31 @@
 # FetchForge
 
-FetchForge is a C++ command-line file downloader project built using
-libcurl on Linux and WSL.
+FetchForge is a C++ command-line file downloader powered by libcurl.
+
+The project is being developed on Linux/WSL and focuses on reliable file downloads, error handling, and clean command-line usage.
 
 ## Technologies
 
-- C++
+- C++17
 - libcurl
 - G++
 - Linux / WSL
 - Git and GitHub
 
-## Current Features
+## Features
 
+- HTTP and HTTPS URL validation
 - Command-line argument handling
-- HTTP and HTTPS URL scheme checks
-- Exception handling for invalid arguments
-- Basic URL validation
+- File downloading using libcurl
+- Automatic redirect handling
+- Connection and download timeouts
+- HTTP error detection
+- Temporary files for incomplete downloads
+- Exception-based error reporting
 
-## Build
+## Requirements
 
-Install the required dependencies:
+Install the required packages on Ubuntu/WSL:
 
 ```bash
 sudo apt update
