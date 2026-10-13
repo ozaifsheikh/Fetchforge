@@ -4,6 +4,10 @@
 #include <cstdio>
 #include <filesystem>
 #include <curl/curl.h>
+#include <cerrno>
+#include <cstring>
+#include <fcntl.h>
+#include <unistd.h>
 
 using namespace std;
 namespace fs = std::filesystem;
@@ -171,6 +175,32 @@ fs::path getUniquePath(const fs::path& desiredPath)
     }
 }
 
+// Create a new temporary file without overwriting an existing file.
+FILE* createTemporaryFile(const fs::path& path)
+{
+    int fd = open(
+        path.c_str(),
+        O_WRONLY | O_CREAT | O_EXCL,
+        0600
+    );
+
+    if (fd == -1)
+    {
+        return nullptr;
+    }
+
+    FILE* file = fdopen(fd, "wb");
+
+    if (file == nullptr)
+    {
+        close(fd);
+        unlink(path.c_str());
+        return nullptr;
+    }
+
+    return file;
+}
+
 // Write downloaded data to a file.
 size_t writeCallback(
     char* data,
@@ -224,7 +254,7 @@ fs::path temporaryPath = outputPath.string() + ".part";
 
     try
     {
-        file = fopen(temporaryPath.c_str(), "wb");
+        file = createTemporaryFile(temporaryPath);
 
         if (file == nullptr)
         {
