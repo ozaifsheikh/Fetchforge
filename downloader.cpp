@@ -8,7 +8,7 @@
 using namespace std;
 namespace fs = std::filesystem;
 
-// Validate an HTTP or HTTPS URL.
+// Validate an HTTP or HTTPS URL using libcurl's URL parser.
 bool isValidURL(const string& url)
 {
     if (url.empty())
@@ -16,27 +16,56 @@ bool isValidURL(const string& url)
         return false;
     }
 
-    if (url.find("http://") != 0 &&
-        url.find("https://") != 0)
+    CURLU* curlUrl = curl_url();
+
+    if (curlUrl == nullptr)
     {
         return false;
     }
 
-    size_t start = url.find("://") + 3;
-
-    if (start >= url.length() || url[start] == '/')
-    {
-        return false;
-    }
-
-    size_t end = url.find_first_of("/?#", start);
-
-    string host = url.substr(
-        start,
-        end == string::npos ? string::npos : end - start
+    CURLUcode result = curl_url_set(
+        curlUrl,
+        CURLUPART_URL,
+        url.c_str(),
+        0
     );
 
-    return !host.empty();
+    if (result != CURLUE_OK)
+    {
+        curl_url_cleanup(curlUrl);
+        return false;
+    }
+
+    char* scheme = nullptr;
+    char* host = nullptr;
+
+    CURLUcode schemeResult = curl_url_get(
+        curlUrl,
+        CURLUPART_SCHEME,
+        &scheme,
+        0
+    );
+
+    CURLUcode hostResult = curl_url_get(
+        curlUrl,
+        CURLUPART_HOST,
+        &host,
+        0
+    );
+
+    bool valid =
+        schemeResult == CURLUE_OK &&
+        hostResult == CURLUE_OK &&
+        scheme != nullptr &&
+        host != nullptr &&
+        (string(scheme) == "http" || string(scheme) == "https") &&
+        !string(host).empty();
+
+    curl_free(scheme);
+    curl_free(host);
+    curl_url_cleanup(curlUrl);
+
+    return valid;
 }
 
 // Read and validate command-line arguments.
@@ -118,6 +147,30 @@ string getFilename(const string& url)
     return filename;
 }
 
+// Find a filename that does not already exist.
+fs::path getUniquePath(const fs::path& desiredPath)
+{
+    if (!fs::exists(desiredPath))
+    {
+        return desiredPath;
+    }
+
+    fs::path directory = desiredPath.parent_path();
+    string stem = desiredPath.stem().string();
+    string extension = desiredPath.extension().string();
+
+    for (unsigned int index = 1; ; ++index)
+    {
+        fs::path candidate = directory /
+            (stem + "_" + to_string(index) + extension);
+
+        if (!fs::exists(candidate))
+        {
+            return candidate;
+        }
+    }
+}
+
 // Write downloaded data to a file.
 size_t writeCallback(
     char* data,
@@ -139,12 +192,14 @@ void downloadFile(const string& url)
 
     fs::create_directories("downloads");
 
-    string filename = getFilename(url);
-    fs::path outputPath = fs::path("downloads") / filename;
-    fs::path temporaryPath = outputPath.string() + ".part";
+string filename = getFilename(url);
+fs::path desiredPath = fs::path("downloads") / filename;
+fs::path outputPath = getUniquePath(desiredPath);
+filename = outputPath.filename().string();
+fs::path temporaryPath = outputPath.string() + ".part";
 
     cout << "\nURL: " << url << '\n';
-    cout << "Connecting to server...\n";
+    cout << "Connecting to Server...\n";
 
     // Initialize libcurl.
     CURLcode globalResult = curl_global_init(CURL_GLOBAL_DEFAULT);
